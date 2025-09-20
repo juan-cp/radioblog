@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Radio Blog Webamp</title>
+  <script src="https://unpkg.com/webamp@1.5.0/built/webamp.bundle.min.js"></script>
+  <style>
+    body {
+      background: #000;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #webamp-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1;
+    }
+    .error-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff4444;
+      text-align: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.9);
+      border-radius: 4px;
+      display: none;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <div id="webamp-container"></div>
+  <div class="error-message" id="error-message">Error al cargar Webamp</div>
+  <script>
+    async function loadTracks() {
+      try {
+        const response = await fetch('music');
+        if (!response.ok) throw new Error('No se pudo cargar la lista de música');
+        
+        const text = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        
+        const tracks = Array.from(doc.querySelectorAll('a'))
+          .filter(a => a.href.toLowerCase().endsWith('.mp3'))
+          .map(a => {
+            const fileName = decodeURIComponent(a.href.split('/').pop());
+            const [artist, title] = fileName.split(' - ').map(s => s.replace('.mp3', ''));
+            return {
+              url: `music/${fileName}`,
+              metaData: {
+                artist: artist || 'Unknown',
+                title: title || fileName
+              }
+            };
+          });
+
+        return tracks;
+      } catch (error) {
+        console.error('Error cargando tracks:', error);
+        return [];
+      }
+    }
+
+    window.addEventListener('load', async function() {
+      if (typeof Webamp === 'undefined') {
+        document.getElementById('error-message').style.display = 'block';
+        document.getElementById('error-message').textContent = 'Error: Webamp no se pudo cargar. Verifica tu conexión a internet.';
+        console.error('Webamp no está definido');
+        return;
+      }
+
+      try {
+        const tracks = await loadTracks();
+        const webamp = new Webamp({
+          initialTracks: tracks,
+          zIndex: 100,
+          handleTrackDropEvent: true,
+          showWinampBar: true
+        });
+
+        webamp.onClose(() => {
+          webamp.dispose();
+        });
+
+        webamp.renderWhenReady(document.getElementById("webamp-container"))
+          .then(() => {
+            document.getElementById('error-message').style.display = 'none';
+          })
+          .catch(error => {
+            console.error('Error al renderizar Webamp:', error);
+            document.getElementById('error-message').style.display = 'block';
+            document.getElementById('error-message').textContent = 'Error al inicializar Webamp: ' + error.message;
+          });
+      } catch (error) {
+        console.error('Error al configurar Webamp:', error);
+        document.getElementById('error-message').style.display = 'block';
+        document.getElementById('error-message').textContent = 'Error al configurar Webamp: ' + error.message;
+      }
+    });
+  </script>
+</body>
+</html>
