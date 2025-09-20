@@ -41,7 +41,7 @@
   <script>
     async function loadTracks() {
       try {
-        const response = await fetch('music');
+        const response = await fetch('.');
         if (!response.ok) throw new Error('No se pudo cargar la lista de música');
         
         const text = await response.text();
@@ -54,7 +54,7 @@
             const fileName = decodeURIComponent(a.href.split('/').pop());
             const [artist, title] = fileName.split(' - ').map(s => s.replace('.mp3', ''));
             return {
-              url: `music/${fileName}`,
+              url: fileName,
               metaData: {
                 artist: artist || 'Unknown',
                 title: title || fileName
